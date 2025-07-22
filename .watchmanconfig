@@ -1,0 +1,14 @@
+{
+  "ignore_dirs": [
+    "node_modules",
+    "dist",
+    ".expo",
+    "ios/build",
+    "android/build"
+  ],
+  "root_restrict_files": [".git"],
+  "enforce_root_files": true,
+  "watchman": {
+    "suppress_project_errors": true
+  }
+}

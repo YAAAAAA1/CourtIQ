@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, View, Text, ViewStyle, TextStyle, TouchableOpacity, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import colors from '@/constants/colors';
-import theme from '@/constants/theme';
+import colors from '@/constants/colors.js';
+import theme from '@/constants/theme.js';
 
 interface CardProps {
   title?: string;

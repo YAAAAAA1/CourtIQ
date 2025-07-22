@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
-import colors from '@/constants/colors';
-import theme from '@/constants/theme';
+import * as Svg from 'react-native-svg';
+import colors from '@/constants/colors.js';
+import theme from '@/constants/theme.js';
 
 interface CircularProgressProps {
   size: number;
@@ -30,8 +30,8 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
-      <Svg width={size} height={size} style={styles.svg}>
-        <Circle
+      <Svg.Svg width={size} height={size} style={styles.svg}>
+        <Svg.Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -39,7 +39,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
           strokeWidth={strokeWidth}
           fill="transparent"
         />
-        <Circle
+        <Svg.Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -51,7 +51,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
           fill="transparent"
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
-      </Svg>
+      </Svg.Svg>
       <View style={styles.content}>
         {children || (showPercentage && (
           <Text style={styles.percentage}>

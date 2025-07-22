@@ -4,15 +4,18 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, Search, ArrowLeft, Minus, Target, Calculator, X, Camera as CameraIcon, RotateCcw, Check } from 'lucide-react-native';
 import { CameraView, Camera } from 'expo-camera';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
-import Card from '@/components/Card';
-import Button from '@/components/Button';
-import CircularProgress from '@/components/CircularProgress';
-import colors from '@/constants/colors';
-import theme from '@/constants/theme';
+import { useAuth } from '@/hooks/useAuth.js';
+import { supabase } from '@/lib/supabase.js';
+import Card from '@/components/Card.js';
+import Button from '@/components/Button.js';
+import CircularProgress from '@/components/CircularProgress.js';
+import colors from '@/constants/colors.js';
+import theme from '@/constants/theme.js';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { updateAllReminders } from '@/lib/notifications.js';
 
 const { width } = Dimensions.get('window');
 
@@ -175,9 +178,43 @@ function NutritionScreen() {
     gender: 'male',
   });
 
+  // Add state for modal meal type selection
+  const [modalMealType, setModalMealType] = useState<string>('');
+  // Add state for showing meal type modal
+  const [showMealTypeModal, setShowMealTypeModal] = useState(false);
+
   useEffect(() => {
     loadNutritionData();
+    // Mark app opened today
+    const markAppOpened = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      await (AsyncStorage as any).setItem('lastOpenedDate', today);
+    };
+    markAppOpened();
   }, []);
+
+  // After meals are loaded, update notifications
+  useEffect(() => {
+    const updateNotifications = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const breakfastLogged = meals.some(m => m.meal_type === 'breakfast' && m.date === today);
+      const lunchLogged = meals.some(m => m.meal_type === 'lunch' && m.date === today);
+      const dinnerLogged = meals.some(m => m.meal_type === 'dinner' && m.date === today);
+      // Check if app opened today
+      const lastOpened = await (AsyncStorage as any).getItem('lastOpenedDate');
+      const appOpenedToday = lastOpened === today;
+      // TODO: Load calendar events for today (replace with real events if available)
+      const calendarEvents: { id: string, title: string, date: Date }[] = [];
+      await updateAllReminders({
+        breakfastLogged,
+        lunchLogged,
+        dinnerLogged,
+        appOpenedToday,
+        calendarEvents,
+      });
+    };
+    updateNotifications();
+  }, [meals]);
 
   useEffect(() => {
     console.log('NutritionGoals state changed:', nutritionGoals);
@@ -765,93 +802,63 @@ function NutritionScreen() {
   };
 
   const analyzeFood = async () => {
-    console.log('analyzeFood called');
-    try {
-      setShowCamera(false);
-      setShowFoodDescriptionModal(true);
-      console.log('Description modal shown');
-    } catch (error) {
-      console.error('Error opening description modal:', error);
-      Alert.alert('Error', 'Failed to open description modal.');
+    if (!capturedImage) {
+      Alert.alert('Error', 'No image to analyze.');
+      return;
     }
-  };
-
-  const searchFoodWithNutritionix = async (query: string) => {
-    console.log('searchFoodWithNutritionix called with query:', query);
-    if (!query.trim()) return;
     setAnalyzingFood(true);
+
     try {
-      const response = await fetch('https://trackapi.nutritionix.com/v2/search/instant', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-app-id': 'df4d7300',
-          'x-app-key': '510629742bef310bf728ddda05e41ad9',
+      // Convert image to base64
+      const base64 = await FileSystem.readAsStringAsync(capturedImage, { encoding: FileSystem.EncodingType.Base64 });
+
+      // Clarifai API request
+      const response = await axios.post(
+        'https://api.clarifai.com/v2/models/food-item-recognition/versions/1d5fd481e0cf4826aa72ec3ff049e044/outputs',
+        {
+          user_app_id: {
+            user_id: 'clarifai',
+            app_id: 'main'
+          },
+          inputs: [
+            {
+              data: {
+                image: {
+                  base64: base64
+                }
+              }
+            }
+          ]
         },
-        body: JSON.stringify({
-          query: query,
-          branded: true,
-          common: true,
-        }),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to search food');
+        {
+          headers: {
+            'Authorization': 'Key 9b96e68a057c4aa1af4fa0a6f9ddc294',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Parse predictions
+      const concepts = response.data.outputs[0].data.concepts;
+      if (!concepts || concepts.length === 0) {
+        Alert.alert('No food detected', 'Try a clearer photo.');
+        setAnalyzingFood(false);
+        return;
       }
-      const data = await response.json();
-      const results: FoodRecognitionResult[] = [];
-      if (data.branded) {
-        data.branded.forEach((item: any) => {
-          results.push({
-            name: item.food_name,
-            calories: item.nix_item_calories || 0,
-            protein: item.nix_item_protein || 0,
-            carbs: item.nix_item_carbs || 0,
-            fat: item.nix_item_fat || 0,
-            serving_size: item.serving_unit || '1 serving',
-            confidence: 0.9,
-          });
-        });
-      }
-      if (data.common) {
-        data.common.forEach((item: any) => {
-          results.push({
-            name: item.food_name,
-            calories: item.full_nutrients?.find((n: any) => n.attr_id === 208)?.value || 0,
-            protein: item.full_nutrients?.find((n: any) => n.attr_id === 203)?.value || 0,
-            carbs: item.full_nutrients?.find((n: any) => n.attr_id === 205)?.value || 0,
-            fat: item.full_nutrients?.find((n: any) => n.attr_id === 204)?.value || 0,
-            serving_size: item.serving_unit || '100g',
-            confidence: 0.8,
-          });
-        });
-      }
-      if (results.length === 0) {
-        const mockResults: FoodRecognitionResult[] = [
-          { name: 'Grilled Chicken Breast', calories: 165, protein: 31, carbs: 0, fat: 3.6, serving_size: '100g', confidence: 0.85 },
-          { name: 'Mixed Green Salad', calories: 20, protein: 2, carbs: 4, fat: 0.2, serving_size: '100g', confidence: 0.78 },
-          { name: 'Brown Rice', calories: 111, protein: 2.6, carbs: 23, fat: 0.9, serving_size: '100g', confidence: 0.72 },
-        ];
-        setFoodRecognitionResults(mockResults);
-        console.log('Mock results used');
-      } else {
-        setFoodRecognitionResults(results);
-        console.log('Nutritionix results:', results);
-      }
+
+      // Map to foodRecognitionResults (top 3)
+      const recognizedFoods = concepts.slice(0, 3).map((concept: { name: string; value: number }) => ({
+        name: concept.name,
+        confidence: concept.value,
+      }));
+
+      setFoodRecognitionResults(recognizedFoods);
       setShowFoodResults(true);
+      setShowCamera(false);
       setShowFoodDescriptionModal(false);
-      console.log('Results modal shown');
     } catch (error) {
-      console.error('Error searching food:', error);
-      Alert.alert('Error', 'Failed to search food. Please try again.');
-      const mockResults: FoodRecognitionResult[] = [
-        { name: 'Grilled Chicken Breast', calories: 165, protein: 31, carbs: 0, fat: 3.6, serving_size: '100g', confidence: 0.85 },
-        { name: 'Mixed Green Salad', calories: 20, protein: 2, carbs: 4, fat: 0.2, serving_size: '100g', confidence: 0.78 },
-        { name: 'Brown Rice', calories: 111, protein: 2.6, carbs: 23, fat: 0.9, serving_size: '100g', confidence: 0.72 },
-      ];
-      setFoodRecognitionResults(mockResults);
-      setShowFoodResults(true);
-      setShowFoodDescriptionModal(false);
-      console.log('Mock results used after error');
+      console.error('Clarifai error:', error);
+      Alert.alert('Error', 'Failed to analyze food image.');
     } finally {
       setAnalyzingFood(false);
     }
@@ -860,21 +867,49 @@ function NutritionScreen() {
   const addRecognizedFood = async (food: FoodRecognitionResult) => {
     if (!user?.id) return;
 
+    // Only allow valid meal types
+    const allowedMealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+    const mealTypeToUse = selectedMealType || modalMealType;
+    if (!mealTypeToUse || !allowedMealTypes.includes(mealTypeToUse)) {
+      Alert.alert('Select Meal Type', 'Please select a meal type (breakfast, lunch, dinner, or snack) before logging.');
+      return;
+    }
+
     try {
       const today = new Date().toISOString().split('T')[0];
-      
-      // Parse serving size to get weight
-      const servingWeight = parseInt(food.serving_size.replace(/\D/g, '')) || 100;
-      const multiplier = foodWeight / servingWeight;
-      
+
+      // Fuzzy match: ignore case, punctuation, and do partial match
+      function normalize(str: string) {
+        return str.toLowerCase().replace(/[^a-z0-9]/gi, '');
+      }
+      const foodNorm = normalize(food.name);
+      let match = allFoods.find(f => normalize(f.name) === foodNorm);
+      if (!match) {
+        match = allFoods.find(f => normalize(f.name).includes(foodNorm) || foodNorm.includes(normalize(f.name)));
+      }
+
+      let calories = 0, protein = 0, carbs = 0, fat = 0, serving_size = 100;
+      let foodName = food.name;
+      if (match) {
+        calories = match.calories_per_100g;
+        protein = match.protein_per_100g;
+        carbs = match.carbs_per_100g;
+        fat = match.fat_per_100g;
+        serving_size = 100;
+        foodName = match.name;
+      } else {
+        Alert.alert('Nutrition Info Not Found', `No nutrition info found for "${food.name}". Logging with 0 values. Try adding this food manually for better results.`);
+      }
+
+      const multiplier = foodWeight / serving_size;
       const mealData = {
         user_id: user.id,
-        meal_type: selectedMealType as 'breakfast' | 'lunch' | 'dinner' | 'snack',
-        name: `${food.name} (${foodWeight}g)`,
-        calories: Math.round(food.calories * multiplier),
-        protein: Math.round(food.protein * multiplier),
-        carbs: Math.round(food.carbs * multiplier),
-        fat: Math.round(food.fat * multiplier),
+        meal_type: mealTypeToUse as 'breakfast' | 'lunch' | 'dinner' | 'snack',
+        name: `${foodName} (${foodWeight}g)`,
+        calories: Math.round(calories * multiplier),
+        protein: Math.round(protein * multiplier),
+        carbs: Math.round(carbs * multiplier),
+        fat: Math.round(fat * multiplier),
         date: today,
       };
 
@@ -916,6 +951,54 @@ function NutritionScreen() {
           <Text style={styles.modalTitle}>Recognized Foods</Text>
           <View style={{ width: 60 }} />
         </View>
+        {/* Meal type dropdown if not set */}
+        {!selectedMealType && (
+          <View style={{ paddingHorizontal: 24, marginTop: 12, marginBottom: 8 }}>
+            <Text style={{ color: colors.text, fontWeight: 'bold', marginBottom: 4 }}>Select Meal Type</Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: colors.backgroundCard,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: colors.gray[800],
+                padding: 12,
+              }}
+              onPress={() => setShowMealTypeModal(true)}
+            >
+              <Text style={{ color: modalMealType ? colors.text : colors.textSecondary }}>
+                {modalMealType ? modalMealType.charAt(0).toUpperCase() + modalMealType.slice(1) : 'Choose...'}
+              </Text>
+            </TouchableOpacity>
+            {/* Meal type selection modal */}
+            <Modal
+              visible={showMealTypeModal}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowMealTypeModal(false)}
+            >
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}
+                activeOpacity={1}
+                onPressOut={() => setShowMealTypeModal(false)}
+              >
+                <View style={{ backgroundColor: colors.background, borderRadius: 12, padding: 24, minWidth: 220 }}>
+                  {['breakfast', 'lunch', 'dinner', 'snack'].map(type => (
+                    <TouchableOpacity
+                      key={type}
+                      style={{ paddingVertical: 12, alignItems: 'center' }}
+                      onPress={() => {
+                        setModalMealType(type);
+                        setShowMealTypeModal(false);
+                      }}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 18 }}>{type.charAt(0).toUpperCase() + type.slice(1)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </TouchableOpacity>
+            </Modal>
+          </View>
+        )}
         <ScrollView style={styles.modalContent}>
           <View style={styles.resultsHeader}>
             <Text style={styles.resultsSubtitle}>
@@ -923,30 +1006,39 @@ function NutritionScreen() {
             </Text>
           </View>
           {Array.isArray(foodRecognitionResults) && foodRecognitionResults.length > 0 ? (
-            foodRecognitionResults.map((food, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.foodResultCardModern}
-                onPress={() => addRecognizedFood(food)}
-                activeOpacity={0.85}
-              >
-                <View style={styles.foodResultImageContainer}>
-                  <Text style={styles.foodResultEmoji}>🍽️</Text>
-                </View>
-                <View style={styles.foodResultInfoModern}>
-                  <Text style={styles.foodResultNameModern}>{food.name}</Text>
-                  <Text style={styles.foodResultDetailsModern}>
-                    {food.calories} cal • {food.protein}g protein • {food.carbs}g carbs • {food.fat}g fat
-                  </Text>
-                  <Text style={styles.foodResultServingModern}>
-                    Serving: {food.serving_size} • Confidence: {Math.round(food.confidence * 100)}%
-                  </Text>
-                </View>
-                <TouchableOpacity style={styles.logResultButton}>
-                  <Text style={styles.logResultButtonText}>Log</Text>
+            foodRecognitionResults.map((food, index) => {
+              // Find nutrition info
+              const match = allFoods.find(f =>
+                f.name.toLowerCase().includes(food.name.toLowerCase()) ||
+                food.name.toLowerCase().includes(f.name.toLowerCase())
+              );
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.foodResultCardModern}
+                  onPress={() => addRecognizedFood(food)}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.foodResultImageContainer}>
+                    <Text style={styles.foodResultEmoji}>🍽️</Text>
+                  </View>
+                  <View style={styles.foodResultInfoModern}>
+                    <Text style={styles.foodResultNameModern}>{food.name}</Text>
+                    <Text style={styles.foodResultDetailsModern}>
+                      {match
+                        ? `${match.calories_per_100g} cal • ${match.protein_per_100g}g protein • ${match.carbs_per_100g}g carbs • ${match.fat_per_100g}g fat`
+                        : 'Nutrition info not found'}
+                    </Text>
+                    <Text style={styles.foodResultServingModern}>
+                      Serving: 100g • Confidence: {Math.round(food.confidence * 100)}%
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={styles.logResultButton}>
+                    <Text style={styles.logResultButtonText}>Log</Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
-              </TouchableOpacity>
-            ))
+              );
+            })
           ) : (
             <Text style={{ color: 'red', textAlign: 'center', marginVertical: 24 }}>No results found. Please try again.</Text>
           )}
@@ -1060,9 +1152,10 @@ function NutritionScreen() {
                 title={analyzingFood ? "Analyzing..." : "Analyze Food"}
                 variant="gradient"
                 onPress={analyzeFood}
-                style={styles.previewButton}
+                style={styles.analyzeFoodButton}
                 disabled={analyzingFood}
-                leftIcon={!analyzingFood ? <Check size={20} color={colors.text} /> : undefined}
+                leftIcon={!analyzingFood ? <Check size={28} color={colors.text} /> : undefined}
+                textStyle={styles.analyzeFoodButtonText}
               />
             </View>
           </>
@@ -1085,17 +1178,7 @@ function NutritionScreen() {
             <Text style={styles.modalCancel}>Cancel</Text>
           </TouchableOpacity>
           <Text style={styles.modalTitle}>Describe Your Food</Text>
-          <TouchableOpacity 
-            onPress={() => searchFoodWithNutritionix(foodDescription)}
-            disabled={!foodDescription.trim() || analyzingFood}
-          >
-            <Text style={[
-              styles.modalSave, 
-              (!foodDescription.trim() || analyzingFood) && { opacity: 0.5 }
-            ]}>
-              {analyzingFood ? 'Searching...' : 'Search'}
-            </Text>
-          </TouchableOpacity>
+          {/* Search button removed since searchFoodWithNutritionix is no longer used */}
         </View>
         <View style={styles.modalContent}>
           <View style={styles.inputGroup}>
@@ -2146,7 +2229,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.l,
-    paddingTop: theme.spacing.xl,
+    paddingTop: theme.spacing.xl * 1.8, // Increased from 1.0 to 1.8 for better touch area
     paddingBottom: theme.spacing.l,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[800],
@@ -2225,7 +2308,7 @@ const styles = StyleSheet.create({
   },
   previewImage: {
     width: '100%',
-    height: '100%',
+    height: 320,
     borderRadius: 10,
   },
   previewControls: {
@@ -2237,6 +2320,27 @@ const styles = StyleSheet.create({
   previewButton: {
     flex: 1,
     marginHorizontal: theme.spacing.s,
+  },
+  analyzeFoodButton: {
+    flex: 1,
+    marginHorizontal: theme.spacing.s,
+    backgroundColor: colors.primary,
+    borderRadius: theme.borderRadius.l,
+    paddingVertical: theme.spacing.l,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+    marginTop: theme.spacing.m,
+  },
+  analyzeFoodButtonText: {
+    color: colors.text,
+    fontWeight: 'bold',
+    fontSize: theme.typography.fontSizes.l,
+    letterSpacing: 0.5,
   },
   quickActions: {
     flexDirection: 'row',

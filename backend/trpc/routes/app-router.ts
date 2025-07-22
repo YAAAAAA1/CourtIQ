@@ -1,4 +1,4 @@
-import { createTRPCRouter } from "./create-context";
+import { createTRPCRouter } from "./create-context.js";
 
 export const appRouter = createTRPCRouter({
   // Add your routes here

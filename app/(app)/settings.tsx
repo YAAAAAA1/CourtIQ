@@ -8,7 +8,7 @@ import Card from '@/components/Card';
 import Button from '@/components/Button';
 import colors from '@/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { scheduleAllMealReminders, cancelAllMealReminders } from '@/lib/notifications';
+import { updateAllReminders } from '@/lib/notifications';
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
@@ -54,10 +54,24 @@ export default function SettingsScreen() {
     setMealReminders(value);
     await AsyncStorage.setItem('mealReminders', value ? 'true' : 'false');
     if (value) {
-      await scheduleAllMealReminders();
+      // Enable meal reminders: schedule them (all not logged, not opened, no calendar events)
+      await updateAllReminders({
+        breakfastLogged: false,
+        lunchLogged: false,
+        dinnerLogged: false,
+        appOpenedToday: false,
+        calendarEvents: [],
+      });
       Alert.alert('Meal Reminders', 'Meal reminders enabled.');
     } else {
-      await cancelAllMealReminders();
+      // Disable meal reminders: cancel by marking all as logged and opened
+      await updateAllReminders({
+        breakfastLogged: true,
+        lunchLogged: true,
+        dinnerLogged: true,
+        appOpenedToday: true,
+        calendarEvents: [],
+      });
       Alert.alert('Meal Reminders', 'Meal reminders disabled.');
     }
   };

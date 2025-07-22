@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -7,27 +7,34 @@ import {
   ViewStyle,
   TextStyle,
   TouchableOpacityProps,
-  Platform
+  StyleProp,
+  View,
+  ViewStyle as RNViewStyle,
+  TextStyle as RNTextStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import colors from '@/constants/colors';
 import theme from '@/constants/theme';
 
-interface ButtonProps extends TouchableOpacityProps {
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'text' | 'gradient';
+type ButtonSize = 'small' | 'medium' | 'large' | 'xlarge';
+
+interface ButtonProps extends Omit<TouchableOpacityProps, 'style'> {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'outline' | 'text' | 'gradient';
-  size?: 'small' | 'medium' | 'large' | 'xlarge';
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   loading?: boolean;
   disabled?: boolean;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
+  leftIcon?: ReactNode;
+  rightIcon?: ReactNode;
   fullWidth?: boolean;
+  children?: ReactNode;
 }
 
-const Button: React.FC<ButtonProps> = ({
+const Button = ({
   title,
   onPress,
   variant = 'primary',
@@ -39,9 +46,10 @@ const Button: React.FC<ButtonProps> = ({
   leftIcon,
   rightIcon,
   fullWidth = false,
+  children,
   ...rest
-}) => {
-  const getButtonStyle = () => {
+}: ButtonProps) => {
+  const getButtonStyle = (): ViewStyle => {
     switch (variant) {
       case 'primary':
         return styles.primaryButton;
@@ -58,9 +66,10 @@ const Button: React.FC<ButtonProps> = ({
     }
   };
 
-  const getTextStyle = () => {
+  const getTextStyle = (): TextStyle => {
     switch (variant) {
       case 'primary':
+      case 'gradient':
         return styles.primaryText;
       case 'secondary':
         return styles.secondaryText;
@@ -68,100 +77,58 @@ const Button: React.FC<ButtonProps> = ({
         return styles.outlineText;
       case 'text':
         return styles.textButtonText;
-      case 'gradient':
-        return styles.gradientText;
       default:
         return styles.primaryText;
     }
   };
 
-  const getSizeStyle = () => {
+  const getSizeStyle = (): ViewStyle => {
     switch (size) {
       case 'small':
         return styles.smallButton;
-      case 'medium':
-        return styles.mediumButton;
       case 'large':
         return styles.largeButton;
       case 'xlarge':
         return styles.xlargeButton;
+      case 'medium':
       default:
         return styles.mediumButton;
     }
   };
 
-  const getTextSizeStyle = () => {
-    switch (size) {
-      case 'small':
-        return styles.smallText;
-      case 'medium':
-        return styles.mediumText;
-      case 'large':
-        return styles.largeText;
-      case 'xlarge':
-        return styles.xlargeText;
-      default:
-        return styles.mediumText;
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator 
+            size="small" 
+            color={variant === 'primary' || variant === 'gradient' ? '#FFFFFF' : colors.primary} 
+          />
+        </View>
+      );
     }
+
+    return (
+      <View style={styles.contentContainer}>
+        {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
+        <Text
+          style={[
+            styles.text,
+            getTextStyle(),
+            textStyle,
+            (disabled || loading) && styles.disabledText,
+          ]}
+          numberOfLines={1}
+        >
+          {title}
+        </Text>
+        {rightIcon && <View style={styles.iconRight}>{rightIcon}</View>}
+        {children}
+      </View>
+    );
   };
 
-  const buttonContent = (
-    <>
-      {loading ? (
-        <ActivityIndicator 
-          color={variant === 'outline' || variant === 'text' ? colors.primary : colors.text} 
-          size="small" 
-        />
-      ) : (
-        <>
-          {leftIcon}
-          <Text
-            style={[
-              styles.text,
-              getTextStyle(),
-              getTextSizeStyle(),
-              disabled && styles.disabledText,
-              textStyle,
-              leftIcon ? { marginLeft: 8 } : undefined,
-              rightIcon ? { marginRight: 8 } : undefined,
-            ]}
-          >
-            {title}
-          </Text>
-          {rightIcon}
-        </>
-      )}
-    </>
-  );
-
-  if (variant === 'gradient') {
-    return (
-      <TouchableOpacity
-        onPress={onPress}
-        disabled={disabled || loading}
-        style={[
-          styles.button,
-          getSizeStyle(),
-          fullWidth && styles.fullWidth,
-          disabled && styles.disabledButton,
-          style,
-        ]}
-        activeOpacity={0.8}
-        {...rest}
-      >
-        <LinearGradient
-          colors={colors.primaryGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.gradientContainer, getSizeStyle()]}
-        >
-          {buttonContent}
-        </LinearGradient>
-      </TouchableOpacity>
-    );
-  }
-
-  return (
+  const renderButton = () => (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled || loading}
@@ -170,15 +137,36 @@ const Button: React.FC<ButtonProps> = ({
         getButtonStyle(),
         getSizeStyle(),
         fullWidth && styles.fullWidth,
-        disabled && styles.disabledButton,
+        (disabled || loading) && styles.disabledButton,
         style,
       ]}
       activeOpacity={0.8}
       {...rest}
     >
-      {buttonContent}
+      {renderContent()}
     </TouchableOpacity>
   );
+
+  if (variant === 'gradient') {
+    return (
+      <LinearGradient
+        colors={colors.primaryGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[
+          styles.gradientContainer,
+          getSizeStyle(),
+          fullWidth && styles.fullWidth,
+          (disabled || loading) && styles.disabledButton,
+          style,
+        ]}
+      >
+        {renderButton()}
+      </LinearGradient>
+    );
+  }
+
+  return renderButton();
 };
 
 const styles = StyleSheet.create({
@@ -187,103 +175,98 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: theme.borderRadius.m,
-    ...theme.shadows.medium,
+    paddingHorizontal: theme.spacing.l,
+    paddingVertical: theme.spacing.m,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  text: {
-    fontWeight: '600',
-    textAlign: 'center',
-    letterSpacing: 0.5,
+  contentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButton: {
+    backgroundColor: colors.primary,
+  },
+  secondaryButton: {
+    backgroundColor: colors.secondary,
+  },
+  outlineButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  textButton: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: theme.spacing.m,
+  },
+  gradientButton: {
+    backgroundColor: 'transparent',
+  },
+  primaryText: {
+    color: '#FFFFFF',
+    fontSize: theme.typography.fontSizes.m,
+    fontWeight: theme.typography.fontWeights.semibold as any,
+  },
+  secondaryText: {
+    color: '#FFFFFF',
+    fontSize: theme.typography.fontSizes.m,
+    fontWeight: theme.typography.fontWeights.semibold as any,
+  },
+  outlineText: {
+    color: colors.primary,
+    fontSize: theme.typography.fontSizes.m,
+    fontWeight: theme.typography.fontWeights.semibold as any,
+  },
+  textButtonText: {
+    color: colors.primary,
+    fontSize: theme.typography.fontSizes.m,
+    fontWeight: theme.typography.fontWeights.medium as any,
+  },
+  disabledText: {
+    opacity: 0.6,
+  },
+  smallButton: {
+    paddingVertical: theme.spacing.s,
+    paddingHorizontal: theme.spacing.m,
+  },
+  mediumButton: {
+    paddingVertical: theme.spacing.m,
+    paddingHorizontal: theme.spacing.l,
+  },
+  largeButton: {
+    paddingVertical: theme.spacing.l,
+    paddingHorizontal: theme.spacing.xl,
+  },
+  xlargeButton: {
+    paddingVertical: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.xxl,
+    minHeight: 64,
   },
   fullWidth: {
     width: '100%',
   },
-  // Variants
-  primaryButton: {
-    backgroundColor: colors.primary,
-    ...theme.shadows.colored,
+  disabledButton: {
+    opacity: 0.6,
   },
-  primaryText: {
-    color: colors.text,
+  loadingContainer: {
+    padding: theme.spacing.s,
   },
-  secondaryButton: {
-    backgroundColor: colors.backgroundCard,
-    borderWidth: 1,
-    borderColor: colors.gray[800],
+  iconLeft: {
+    marginRight: theme.spacing.s,
   },
-  secondaryText: {
-    color: colors.text,
-  },
-  outlineButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  outlineText: {
-    color: colors.primary,
-  },
-  textButton: {
-    backgroundColor: 'transparent',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  textButtonText: {
-    color: colors.primary,
-  },
-  gradientButton: {
-    backgroundColor: 'transparent',
-    padding: 0,
+  iconRight: {
+    marginLeft: theme.spacing.s,
   },
   gradientContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     borderRadius: theme.borderRadius.m,
-    width: '100%',
+    overflow: 'hidden',
   },
-  gradientText: {
-    color: colors.text,
-    fontWeight: '700',
-  },
-  // Sizes
-  smallButton: {
-    paddingVertical: theme.spacing.s,
-    paddingHorizontal: theme.spacing.l,
-    minHeight: 36,
-  },
-  smallText: {
-    fontSize: theme.typography.fontSizes.s,
-  },
-  mediumButton: {
-    paddingVertical: theme.spacing.m,
-    paddingHorizontal: theme.spacing.xl,
-    minHeight: 48,
-  },
-  mediumText: {
-    fontSize: theme.typography.fontSizes.m,
-  },
-  largeButton: {
-    paddingVertical: theme.spacing.l,
-    paddingHorizontal: theme.spacing.xxl,
-    minHeight: 56,
-  },
-  largeText: {
-    fontSize: theme.typography.fontSizes.l,
-  },
-  xlargeButton: {
-    paddingVertical: theme.spacing.xl,
-    paddingHorizontal: theme.spacing.xxxl,
-    minHeight: 64,
-  },
-  xlargeText: {
-    fontSize: theme.typography.fontSizes.xl,
-    fontWeight: '700',
-  },
-  // States
-  disabledButton: {
-    opacity: 0.5,
-  },
-  disabledText: {
-    opacity: 0.5,
+  text: {
+    textAlign: 'center',
   },
 });
 

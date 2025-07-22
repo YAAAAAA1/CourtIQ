@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, FlatList, TextInput, Alert, Modal, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Search, Plus, Filter, ChevronRight, X, Clock, Play, Star, Calendar, ArrowLeft, Target, Check, Trash2 } from 'lucide-react-native';
+import { Search, Plus, Filter, ChevronRight, X, Clock, Play, Star, Calendar, ArrowLeft, Target, Check, Trash2, Sparkles } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -53,7 +53,50 @@ export default function WorkoutsNewScreen() {
 
   useEffect(() => {
     loadWorkouts();
+    seedDrillsDatabase(); // Add this line to seed drills
   }, []);
+
+  // Function to seed drills database
+  const seedDrillsDatabase = async () => {
+    try {
+      // Check if drills already exist
+      const { data: existingDrills, error: checkError } = await supabase
+        .from('drills')
+        .select('id, name')
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      // If drills already exist, don't seed again
+      if (existingDrills && existingDrills.length > 0) {
+        return;
+      }
+
+      // Insert drills from constants
+      const drillsToInsert = drills.map(drill => ({
+        id: drill.id, // Use the string ID from constants
+        name: drill.name,
+        description: drill.description,
+        category: drill.category,
+        difficulty: drill.difficulty,
+        instructions: drill.instructions,
+        equipment: drill.equipment.join(', '), // Convert array to string
+        image_url: drill.image_url || null,
+      }));
+
+      const { error: insertError } = await supabase
+        .from('drills')
+        .insert(drillsToInsert);
+
+      if (insertError) {
+        console.error('Error seeding drills:', insertError);
+      } else {
+        console.log('Drills seeded successfully');
+      }
+    } catch (error) {
+      console.error('Error in seedDrillsDatabase:', error);
+    }
+  };
 
   useEffect(() => {
     if (selectedFocuses.length > 0) {
@@ -71,6 +114,7 @@ export default function WorkoutsNewScreen() {
           .from('workouts')
           .select('*')
           .eq('user_id', user.id)
+          .neq('workout_type', 'deleted')
           .order('created_at', { ascending: false });
 
         if (workoutsError) throw workoutsError;
@@ -117,6 +161,227 @@ export default function WorkoutsNewScreen() {
         order_num: index + 1,
       }));
     });
+  };
+
+  // AI Drill Selection Function
+  const selectDrillsWithAI = () => {
+    if (!newWorkout.name.trim()) {
+      Alert.alert('Error', 'Please enter a workout name first');
+      return;
+    }
+
+    const workoutName = newWorkout.name.toLowerCase();
+    const workoutDescription = (newWorkout.description || '').toLowerCase();
+    const combinedText = `${workoutName} ${workoutDescription}`;
+
+    // Clear current selections
+    setSelectedDrills([]);
+
+    // Enhanced keyword mappings with more specific patterns
+    const keywordMappings = {
+      // Shooting keywords
+      'shoot': 'shooting',
+      'shot': 'shooting',
+      'basket': 'shooting',
+      'score': 'shooting',
+      'form': 'shooting',
+      'free throw': 'shooting',
+      'three point': 'shooting',
+      '3 point': 'shooting',
+      'catch and shoot': 'shooting',
+      'fadeaway': 'shooting',
+      'pull up': 'shooting',
+      
+      // Dribbling keywords
+      'dribble': 'dribbling',
+      'ball': 'dribbling',
+      'handle': 'dribbling',
+      'crossover': 'dribbling',
+      'between legs': 'dribbling',
+      'behind back': 'dribbling',
+      'speed dribble': 'dribbling',
+      'weak hand': 'dribbling',
+      'cone': 'dribbling',
+      
+      // Passing keywords
+      'pass': 'passing',
+      'assist': 'passing',
+      'throw': 'passing',
+      'chest pass': 'passing',
+      'bounce pass': 'passing',
+      'overhead': 'passing',
+      
+      // Conditioning keywords
+      'condition': 'conditioning',
+      'cardio': 'conditioning',
+      'sprint': 'conditioning',
+      'endurance': 'conditioning',
+      'suicide': 'conditioning',
+      'defensive': 'conditioning',
+      'slide': 'conditioning',
+      'jump': 'conditioning',
+      'plyometric': 'conditioning',
+      
+      // Recovery keywords
+      'recover': 'recovery',
+      'stretch': 'recovery',
+      'flexibility': 'recovery',
+      'warm': 'recovery',
+      'cool': 'recovery',
+      'foam roll': 'recovery',
+      'dynamic': 'recovery',
+      'static': 'recovery',
+    };
+
+    // Determine focus areas based on keywords with scoring
+    const focusScores: { [key: string]: number } = {
+      shooting: 0,
+      dribbling: 0,
+      passing: 0,
+      conditioning: 0,
+      recovery: 0,
+    };
+
+    Object.entries(keywordMappings).forEach(([keyword, category]) => {
+      if (combinedText.includes(keyword)) {
+        focusScores[category] += 1;
+      }
+    });
+
+    // Analyze workout characteristics
+    const isIntense = combinedText.includes('intense') || combinedText.includes('hard') || combinedText.includes('advanced') || combinedText.includes('challenging');
+    const isBeginner = combinedText.includes('beginner') || combinedText.includes('easy') || combinedText.includes('basic') || combinedText.includes('fundamental');
+    const isShort = combinedText.includes('quick') || combinedText.includes('short') || combinedText.includes('fast') || combinedText.includes('brief');
+    const isLong = combinedText.includes('long') || combinedText.includes('extended') || combinedText.includes('comprehensive') || combinedText.includes('full');
+    const isWarmup = combinedText.includes('warm') || combinedText.includes('prep') || combinedText.includes('prepare');
+    const isCooldown = combinedText.includes('cool') || combinedText.includes('recovery') || combinedText.includes('stretch');
+
+    // Adjust focus scores based on workout characteristics
+    if (isWarmup) {
+      focusScores.recovery += 2;
+      focusScores.shooting += 1;
+    }
+    if (isCooldown) {
+      focusScores.recovery += 3;
+    }
+    if (isIntense) {
+      focusScores.conditioning += 2;
+    }
+    if (isBeginner) {
+      focusScores.shooting += 1;
+      focusScores.dribbling += 1;
+    }
+
+    // Select top focus areas (at least 2, max 3)
+    const sortedFocuses = Object.entries(focusScores)
+      .sort(([,a], [,b]) => b - a)
+      .filter(([,score]) => score > 0)
+      .slice(0, 3)
+      .map(([focus]) => focus);
+
+    // If no specific keywords found, use a balanced approach
+    if (sortedFocuses.length === 0) {
+      sortedFocuses.push('shooting', 'dribbling');
+    }
+
+    // Update selected focuses
+    setSelectedFocuses(sortedFocuses);
+
+    // Get available drills for detected focuses
+    const availableDrills = sortedFocuses.flatMap(focus => getDrillsByCategory(focus));
+
+    // Calculate target workout duration
+    let targetDuration = 1800; // Default 30 minutes
+    if (isShort) targetDuration = 900; // 15 minutes
+    else if (isLong) targetDuration = 3600; // 60 minutes
+    else if (isWarmup || isCooldown) targetDuration = 600; // 10 minutes
+
+    // Enhanced drill selection algorithm
+    const drillScores: { drill: Drill; score: number }[] = [];
+
+    availableDrills.forEach(drill => {
+      let score = 0;
+
+      // Difficulty matching (higher weight)
+      if (isBeginner && drill.difficulty === 'beginner') score += 5;
+      else if (isIntense && drill.difficulty === 'advanced') score += 5;
+      else if (!isBeginner && !isIntense && drill.difficulty === 'intermediate') score += 3;
+      else if (!isBeginner && !isIntense) score += 1; // Balanced approach
+
+      // Duration preference (higher weight)
+      if (isShort && drill.duration <= 300) score += 4; // Prefer short drills for short workouts
+      else if (isLong && drill.duration >= 600) score += 4; // Prefer longer drills for long workouts
+      else if (!isShort && !isLong && drill.duration >= 300 && drill.duration <= 600) score += 3; // Balanced duration
+      else score += 1;
+
+      // Category balance (prefer drills from different categories)
+      const existingCategories = selectedDrills.map(d => 
+        availableDrills.find(drill => drill.id === d.drill_id)?.category
+      );
+      if (!existingCategories.includes(drill.category)) score += 2;
+
+      // Special workout type bonuses
+      if (isWarmup && drill.category === 'recovery') score += 3;
+      if (isCooldown && drill.category === 'recovery') score += 4;
+      if (isIntense && drill.category === 'conditioning') score += 3;
+      if (isBeginner && drill.category === 'shooting') score += 2;
+
+      // Name-based matching (bonus for drills that match workout name)
+      if (workoutName.includes('shoot') && drill.category === 'shooting') score += 2;
+      if (workoutName.includes('dribble') && drill.category === 'dribbling') score += 2;
+      if (workoutName.includes('pass') && drill.category === 'passing') score += 2;
+
+      drillScores.push({ drill, score });
+    });
+
+    // Sort by score and select top drills
+    drillScores.sort((a, b) => b.score - a.score);
+
+    let currentDuration = 0;
+    const selectedDrillIds: string[] = [];
+    const maxDrills = isShort ? 4 : isLong ? 8 : 6; // Adjust max drills based on workout length
+
+    for (const { drill } of drillScores) {
+      if (currentDuration + drill.duration <= targetDuration && selectedDrillIds.length < maxDrills) {
+        selectedDrillIds.push(drill.id);
+        currentDuration += drill.duration;
+      }
+    }
+
+    // Ensure we have at least 3 drills (unless it's a very short warmup/cooldown)
+    const minDrills = (isWarmup || isCooldown) ? 2 : 3;
+    if (selectedDrillIds.length < minDrills) {
+      const remainingDrills = availableDrills.filter(drill => !selectedDrillIds.includes(drill.id));
+      const additionalNeeded = Math.min(minDrills - selectedDrillIds.length, remainingDrills.length);
+      
+      for (let i = 0; i < additionalNeeded; i++) {
+        const randomDrill = remainingDrills[Math.floor(Math.random() * remainingDrills.length)];
+        if (randomDrill && !selectedDrillIds.includes(randomDrill.id)) {
+          selectedDrillIds.push(randomDrill.id);
+        }
+      }
+    }
+
+    // Create workout drill objects
+    const newSelectedDrills: WorkoutDrill[] = selectedDrillIds.map((drillId, index) => {
+      const drill = availableDrills.find(d => d.id === drillId);
+      return {
+        drill_id: drillId,
+        duration: drill?.duration || 300,
+        order_num: index + 1,
+        drill: drill,
+      };
+    });
+
+    setSelectedDrills(newSelectedDrills);
+
+    const totalMinutes = Math.round(newSelectedDrills.reduce((sum, drill) => sum + drill.duration, 0) / 60);
+    const focusAreas = sortedFocuses.join(', ');
+    
+    Alert.alert(
+      'AI Drill Selection Complete!',
+      `I've selected ${newSelectedDrills.length} drills (${totalMinutes} minutes) focused on: ${focusAreas}\n\nBased on your workout: "${newWorkout.name}"\n\nYou can modify the selection as needed.`
+    );
   };
 
   const createWorkout = async () => {
@@ -295,44 +560,58 @@ export default function WorkoutsNewScreen() {
     </TouchableOpacity>
   );
 
-  const renderDrillCard = ({ item }: { item: Drill }) => (
-    <TouchableOpacity
-      style={styles.drillCard}
-      onPress={() => addDrillToWorkout(item)}
-    >
-      <View style={styles.drillHeader}>
-        <View style={styles.drillInfo}>
-          <Text style={styles.drillName}>{item.name}</Text>
-          <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(item.difficulty) }]}>
-            <Text style={styles.difficultyText}>{item.difficulty}</Text>
+  const renderDrillCard = ({ item }: { item: Drill }) => {
+    const isSelected = selectedDrills.some(drill => drill.drill_id === item.id);
+    
+    return (
+      <TouchableOpacity
+        style={[
+          styles.drillCard,
+          isSelected && styles.selectedDrillCard
+        ]}
+        onPress={() => addDrillToWorkout(item)}
+      >
+        <View style={styles.drillHeader}>
+          <View style={styles.drillInfo}>
+            <Text style={styles.drillName}>{item.name}</Text>
+            <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(item.difficulty) }]}>
+              <Text style={styles.difficultyText}>{item.difficulty}</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[
+              styles.addButton,
+              isSelected && styles.selectedAddButton
+            ]}
+            onPress={() => addDrillToWorkout(item)}
+          >
+            {isSelected ? (
+              <Check size={20} color="white" />
+            ) : (
+              <Plus size={20} color="white" />
+            )}
+          </TouchableOpacity>
+        </View>
+        
+        <Text style={styles.drillDescription} numberOfLines={2}>
+          {item.description}
+        </Text>
+        
+        <View style={styles.drillFooter}>
+          <View style={styles.drillStats}>
+            <View style={styles.statItem}>
+              <Clock size={16} color={colors.gray[500]} />
+              <Text style={styles.statText}>{formatDuration(item.duration)}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Target size={16} color={colors.gray[500]} />
+              <Text style={styles.statText}>{item.muscle_groups.length} muscles</Text>
+            </View>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => addDrillToWorkout(item)}
-        >
-          <Plus size={20} color="white" />
-        </TouchableOpacity>
-      </View>
-      
-      <Text style={styles.drillDescription} numberOfLines={2}>
-        {item.description}
-      </Text>
-      
-      <View style={styles.drillFooter}>
-        <View style={styles.drillStats}>
-          <View style={styles.statItem}>
-            <Clock size={16} color={colors.gray[500]} />
-            <Text style={styles.statText}>{formatDuration(item.duration)}</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Target size={16} color={colors.gray[500]} />
-            <Text style={styles.statText}>{item.muscle_groups.length} muscles</Text>
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -469,7 +748,16 @@ export default function WorkoutsNewScreen() {
             {/* Available Drills */}
             {selectedFocuses.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Available Drills</Text>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Available Drills</Text>
+                  <TouchableOpacity
+                    style={styles.aiButton}
+                    onPress={selectDrillsWithAI}
+                  >
+                    <Sparkles size={20} color={colors.warning} />
+                    <Text style={styles.aiButtonText}>AI Select</Text>
+                  </TouchableOpacity>
+                </View>
                 <Text style={styles.sectionSubtitle}>
                   Select drills to add to your workout
                 </Text>
@@ -765,6 +1053,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  selectedDrillCard: {
+    borderWidth: 2,
+    borderColor: colors.warning,
+  },
+  selectedAddButton: {
+    backgroundColor: colors.warning,
+  },
   drillHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -869,5 +1164,25 @@ const styles = StyleSheet.create({
     color: colors.gray[600],
     textAlign: 'center',
     marginTop: 50,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  aiButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.warning,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  aiButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 5,
   },
 }); 

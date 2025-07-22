@@ -3,15 +3,15 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, FlatList, Alert, 
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Search, Plus, Filter, ChevronRight, X, Clock, Play, Star, Calendar, ArrowLeft, Target, Trash2 } from 'lucide-react-native';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
-import Input from '@/components/Input';
-import Card from '@/components/Card';
-import Button from '@/components/Button';
-import colors from '@/constants/colors';
-import theme from '@/constants/theme';
+import { useAuth } from '@/hooks/useAuth.js';
+import { supabase } from '@/lib/supabase.js';
+import Input from '@/components/Input.js';
+import Card from '@/components/Card.js';
+import Button from '@/components/Button.js';
+import colors from '@/constants/colors.js';
+import theme from '@/constants/theme.js';
 import { useRouter } from 'expo-router';
-import { drills as allDrills } from '@/constants/drills';
+import { drills as allDrills } from '@/constants/drills.js';
 
 const { width } = Dimensions.get('window');
 
@@ -287,7 +287,7 @@ function TodayProgramSection() {
   const handleDeleteProgram = async () => {
     Alert.alert(
       'Delete Program',
-      'Are you sure you want to delete this program? This will remove all scheduled workouts and cannot be undone.',
+      'Are you sure you want to delete this program? This will remove all scheduled workouts but preserve your training history.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -299,22 +299,52 @@ function TodayProgramSection() {
                 .select('workout_id')
                 .eq('program_id', program.id);
               const workoutIds = progWorkouts ? progWorkouts.map((pw: any) => pw.workout_id) : [];
+              
               // 2. Delete all related calendar_events for these workouts
               if (workoutIds.length > 0) {
                 await supabase.from('calendar_events').delete().in('workout_id', workoutIds);
-                // 3. Delete all workouts
+                
+                // 3. For each workout, preserve training sessions by creating placeholder workouts
+                for (const workoutId of workoutIds) {
+                  // Create a placeholder workout to preserve training history
+                  const { data: placeholderWorkout, error: placeholderError } = await supabase
+                    .from('workouts')
+                    .insert({
+                      user_id: user!.id,
+                      name: 'Deleted Program Workout',
+                      description: 'This workout was deleted with a program but training sessions are preserved',
+                      duration: 0,
+                      workout_type: 'deleted',
+                    })
+                    .select()
+                    .single();
+
+                  if (placeholderError) throw placeholderError;
+
+                  // Update all workout sessions to reference the placeholder workout
+                  const { error: updateError } = await supabase
+                    .from('workout_sessions')
+                    .update({ workout_id: placeholderWorkout.id })
+                    .eq('workout_id', workoutId);
+
+                  if (updateError) throw updateError;
+                }
+                
+                // 4. Now delete all the original workouts
                 await supabase.from('workouts').delete().in('id', workoutIds);
               }
-              // 4. Delete program_workouts
+              
+              // 5. Delete program_workouts
               await supabase.from('program_workouts').delete().eq('program_id', program.id);
-              // 5. Delete the program itself
+              // 6. Delete the program itself
               await supabase.from('workout_programs').delete().eq('id', program.id);
               setProgram(null);
               setTodayWorkout && setTodayWorkout(null);
               setTodayDrills && setTodayDrills([]);
               setDebug && setDebug({ step: 'deleted' });
-              Alert.alert('Program Deleted', 'Your program and all its workouts have been deleted.');
+              Alert.alert('Program Deleted', 'Your program and all its workouts have been deleted, but your training history is preserved.');
             } catch (err) {
+              console.error('Error deleting program:', err);
               Alert.alert('Error', 'Failed to delete program.');
             }
           }
@@ -437,7 +467,7 @@ function ProgramScheduleSection() {
     if (!program) return;
     Alert.alert(
       'Delete Program',
-      'Are you sure you want to delete this program? This will remove all scheduled workouts and cannot be undone.',
+      'Are you sure you want to delete this program? This will remove all scheduled workouts but preserve your training history.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -448,7 +478,7 @@ function ProgramScheduleSection() {
               await supabase.from('workout_programs').delete().eq('id', program.id);
               setProgram(null);
               setWorkouts([]);
-              Alert.alert('Program Deleted', 'Your program has been deleted.');
+              Alert.alert('Program Deleted', 'Your program has been deleted, but your training history is preserved.');
             } catch (err) {
               Alert.alert('Error', 'Failed to delete program.');
             } finally {
@@ -527,6 +557,7 @@ export default function WorkoutsScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [drills, setDrills] = useState<Drill[]>([]);
   const [myWorkouts, setMyWorkouts] = useState<Workout[]>([]);
+  const [completedWorkouts, setCompletedWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([]);
@@ -560,14 +591,29 @@ export default function WorkoutsScreen() {
       setDrills(allDrills);
 
       if (user?.id) {
-        const { data: workoutsData, error: workoutsError } = await supabase
+        // Load active (non-completed) workouts
+        const { data: activeWorkoutsData, error: activeWorkoutsError } = await supabase
           .from('workouts')
           .select('*')
           .eq('user_id', user.id)
+          .neq('workout_type', 'deleted')
           .order('created_at', { ascending: false });
 
-        if (workoutsError) throw workoutsError;
-        if (workoutsData) setMyWorkouts(workoutsData);
+        if (activeWorkoutsError) throw activeWorkoutsError;
+        if (activeWorkoutsData) setMyWorkouts(activeWorkoutsData);
+
+        // Load completed workouts (temporarily disabled until migration)
+        // const { data: completedWorkoutsData, error: completedWorkoutsError } = await supabase
+        //   .from('workouts')
+        //   .select('*')
+        //   .eq('user_id', user.id)
+        //   .neq('workout_type', 'deleted')
+        //   .eq('completed', true)
+        //   .order('created_at', { ascending: false });
+
+        // if (completedWorkoutsError) throw completedWorkoutsError;
+        // if (completedWorkoutsData) setCompletedWorkouts(completedWorkoutsData);
+        setCompletedWorkouts([]); // Temporarily set to empty array
       }
     } catch (error) {
       console.error('Error loading workouts data:', error);
@@ -677,18 +723,51 @@ export default function WorkoutsScreen() {
   const handleDeleteWorkout = async (workoutId: string) => {
     Alert.alert(
       'Delete Workout',
-      'Are you sure you want to delete this workout? This cannot be undone.',
+      'Are you sure you want to delete this workout? This will remove the workout but preserve your training history.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            const { error } = await supabase.from('workouts').delete().eq('id', workoutId);
-            if (error) {
-              Alert.alert('Error', 'Failed to delete workout');
-            } else {
+            try {
+              // First, create a placeholder workout to preserve training history
+              const { data: placeholderWorkout, error: placeholderError } = await supabase
+                .from('workouts')
+                .insert({
+                  user_id: user!.id,
+                  name: 'Deleted Workout',
+                  description: 'This workout was deleted but training sessions are preserved',
+                  duration: 0,
+                  workout_type: 'deleted',
+                })
+                .select()
+                .single();
+
+              if (placeholderError) throw placeholderError;
+
+              // Update all workout sessions to reference the placeholder workout
+              const { error: updateError } = await supabase
+                .from('workout_sessions')
+                .update({ workout_id: placeholderWorkout.id })
+                .eq('workout_id', workoutId);
+
+              if (updateError) throw updateError;
+
+              // Now delete the original workout
+              const { error: deleteError } = await supabase
+                .from('workouts')
+                .delete()
+                .eq('id', workoutId);
+
+              if (deleteError) throw deleteError;
+
               loadData();
+              // Refresh Home screen/dashboard
+              router.replace('/');
+            } catch (error) {
+              console.error('Error deleting workout:', error);
+              Alert.alert('Error', 'Failed to delete workout');
             }
           },
         },
@@ -907,7 +986,10 @@ export default function WorkoutsScreen() {
                     <Text style={styles.workoutDescription}>{workout.description}</Text>
                   )}
                 </View>
-                <TouchableOpacity style={styles.playButton}>
+                <TouchableOpacity 
+                  style={styles.playButton}
+                  onPress={() => router.push(`/workout-execution?workoutId=${workout.id}`)}
+                >
                   <Play size={20} color={colors.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteWorkout(workout.id)}>
@@ -930,6 +1012,49 @@ export default function WorkoutsScreen() {
           </Card>
         )}
       </View>
+
+      {/* Completed Workouts Section */}
+      {completedWorkouts.length > 0 && (
+        <View style={styles.workoutsSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Completed Workouts</Text>
+            <Text style={styles.completedCount}>{completedWorkouts.length} completed</Text>
+          </View>
+          
+          {completedWorkouts.slice(0, 3).map((workout) => (
+            <TouchableOpacity key={workout.id} style={[styles.workoutCard, styles.completedWorkoutCard]}>
+              <View style={styles.workoutCardContent}>
+                <View style={[styles.workoutIcon, styles.completedWorkoutIcon]}>
+                  <Text style={styles.workoutIconText}>
+                    {drillCategories.find(cat => cat.id === workout.workout_type)?.icon || '💪'}
+                  </Text>
+                </View>
+                <View style={styles.workoutInfo}>
+                  <Text style={[styles.workoutName, styles.completedWorkoutName]}>{workout.name}</Text>
+                  <Text style={[styles.workoutDetails, styles.completedWorkoutDetails]}>
+                    {Math.round(workout.duration / 60)} min • {workout.workout_type}
+                  </Text>
+                  {workout.description && (
+                    <Text style={[styles.workoutDescription, styles.completedWorkoutDescription]}>{workout.description}</Text>
+                  )}
+                </View>
+                <View style={styles.completedBadge}>
+                  <Text style={styles.completedBadgeText}>✓</Text>
+                </View>
+                <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteWorkout(workout.id)}>
+                  <Trash2 size={20} color={colors.error} />
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          ))}
+          
+          {completedWorkouts.length > 3 && (
+            <TouchableOpacity style={styles.viewMoreButton}>
+              <Text style={styles.viewMoreText}>View All {completedWorkouts.length} Completed Workouts</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
       <TodayProgramSection />
       <ProgramScheduleSection />
       <View style={{ marginHorizontal: 16, marginBottom: 32 }}>
@@ -1509,5 +1634,55 @@ const styles = StyleSheet.create({
   },
   modalSaveButton: {
     flex: 1,
+  },
+  completedWorkoutCard: {
+    backgroundColor: colors.backgroundLight,
+    borderColor: colors.primaryLight,
+    borderWidth: 1,
+    marginTop: theme.spacing.s,
+    marginBottom: theme.spacing.s,
+  },
+  completedWorkoutIcon: {
+    backgroundColor: colors.primaryLight,
+  },
+  completedWorkoutName: {
+    color: colors.text,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
+  completedWorkoutDetails: {
+    color: colors.textSecondary,
+    fontWeight: theme.typography.fontWeights.medium,
+  },
+  completedWorkoutDescription: {
+    color: colors.textTertiary,
+    fontWeight: theme.typography.fontWeights.medium,
+  },
+  completedBadge: {
+    backgroundColor: colors.success,
+    borderRadius: 10,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.s,
+  },
+  completedBadgeText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
+  viewMoreButton: {
+    alignSelf: 'center',
+    marginTop: theme.spacing.s,
+  },
+  viewMoreText: {
+    color: colors.primary,
+    fontSize: theme.typography.fontSizes.m,
+    fontWeight: theme.typography.fontWeights.semibold,
+  },
+  completedCount: {
+    color: colors.textSecondary,
+    fontSize: theme.typography.fontSizes.s,
+    fontWeight: theme.typography.fontWeights.medium,
   },
 });

@@ -123,6 +123,7 @@ export default function DrillPracticeScreen() {
   };
 
   const completeDrill = () => {
+    handleCompleteDrill();
     Alert.alert(
       'Drill Complete!',
       'Great job! You\'ve completed the drill.',
@@ -155,12 +156,61 @@ export default function DrillPracticeScreen() {
   const handleCompleteDrill = async () => {
     if (!user?.id || !drill) return;
     try {
-      await supabase.from('drill_sessions').insert({
-        user_id: user.id,
-        drill_id: drill.id,
-        duration: elapsedTime,
-        completed_at: new Date().toISOString(),
-      });
+      // 1. Find or create a 'Solo Drill: [Drill Name]' workout for this user
+      const soloWorkoutName = `Solo Drill: ${drill.name}`;
+      let workoutId: string | null = null;
+      // Try to find existing
+      const { data: existingWorkouts, error: findError } = await supabase
+        .from('workouts')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('name', soloWorkoutName)
+        .limit(1);
+      if (findError) throw findError;
+      if (existingWorkouts && existingWorkouts.length > 0) {
+        workoutId = existingWorkouts[0].id;
+      } else {
+        // Create new workout
+        const { data: newWorkout, error: createError } = await supabase
+          .from('workouts')
+          .insert({
+            user_id: user.id,
+            name: soloWorkoutName,
+            description: `Auto-created for solo drill: ${drill.name}`,
+            duration: drill.duration || elapsedTime || 60,
+            workout_type: 'drill',
+          })
+          .select('id')
+          .single();
+        if (createError) throw createError;
+        workoutId = newWorkout.id;
+        
+        // Create workout_drills entry for this drill
+        const { error: drillError } = await supabase
+          .from('workout_drills')
+          .insert({
+            workout_id: workoutId,
+            drill_id: drill.id,
+            order_num: 1,
+            duration: drill.duration || elapsedTime || 60,
+          });
+        if (drillError) throw drillError;
+      }
+      // 2. Insert into workout_sessions
+      const endTime = new Date();
+      const startTime = new Date(Date.now() - (elapsedTime * 1000));
+      const actualDuration = elapsedTime;
+      const { error: sessionError } = await supabase
+        .from('workout_sessions')
+        .insert({
+          user_id: user.id,
+          workout_id: workoutId,
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
+          completed: true,
+          actual_duration: actualDuration,
+        });
+      if (sessionError) throw sessionError;
       setShowPauseModal(false);
       Alert.alert('Drill Complete!', 'Your drill session has been saved.', [
         { text: 'OK', onPress: () => router.push('/analytics') },

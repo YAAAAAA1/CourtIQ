@@ -180,17 +180,31 @@ export default function WorkoutExecutionScreen() {
   const completeWorkout = async () => {
     try {
       // Save workout session
-      const { error } = await supabase
+      const endTime = new Date();
+      const startTime = new Date(Date.now() - (elapsedTime * 1000));
+      const actualDuration = elapsedTime; // in seconds
+      
+      // Insert workout session
+      const { error: sessionError } = await supabase
         .from('workout_sessions')
         .insert({
           user_id: user?.id,
           workout_id: workoutId,
-          start_time: new Date(Date.now() - (elapsedTime * 1000)).toISOString(),
-          end_time: new Date().toISOString(),
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
           completed: true,
+          actual_duration: actualDuration,
         });
+      
+      if (sessionError) throw sessionError;
 
-      if (error) throw error;
+      // Mark workout as completed (temporarily disabled until migration)
+      // const { error: workoutError } = await supabase
+      //   .from('workouts')
+      //   .update({ completed: true })
+      //   .eq('id', workoutId);
+
+      // if (workoutError) throw workoutError;
 
       Alert.alert(
         'Workout Complete!',
@@ -213,7 +227,21 @@ export default function WorkoutExecutionScreen() {
   };
 
   const skipDrill = () => {
-    nextDrill();
+    Alert.alert(
+      'Skip Drill',
+      'Are you sure you want to skip this drill? This will move you to the next drill in your workout.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Skip',
+          style: 'destructive',
+          onPress: () => nextDrill(),
+        },
+      ]
+    );
   };
 
   const handleStartWorkout = () => {
@@ -227,7 +255,7 @@ export default function WorkoutExecutionScreen() {
     const endTime = new Date();
     let actualDuration = 0;
     if (startTime) {
-      actualDuration = Math.round((endTime.getTime() - startTime.getTime()) / 60000); // in minutes
+      actualDuration = Math.round((endTime.getTime() - startTime.getTime()) / 1000); // in seconds
     }
     // Save session to DB
     await supabase.from('workout_sessions').insert({

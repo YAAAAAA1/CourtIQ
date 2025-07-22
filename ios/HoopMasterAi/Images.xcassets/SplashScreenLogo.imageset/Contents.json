@@ -1,0 +1,23 @@
+{
+  "images" : [
+    {
+      "filename" : "Creative Poster Ideas Jul 18 2025.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "filename" : "Creative Poster Ideas Jul 18 2026.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "Creative Poster Ideas Jul 18 2027.png",
+      "idiom" : "universal",
+      "scale" : "3x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

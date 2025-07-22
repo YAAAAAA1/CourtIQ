@@ -4,4 +4,157 @@
 
 expo-env.d.ts
 # @end expo-cli
-node_modules
+
+# Dependencies
+node_modules/
+/.expo
+/.expo-shared
+/.expo-source-map
+/.expo-source-maps
+/.expo/cache
+/.expo/web/cache
+/.expo/tsconfig.json
+/.expo/tsconfig.tsbuildinfo
+
+# Build outputs
+/dist
+/build
+/web-build
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+build/
+*.apk
+*.aab
+*.ipa
+*.xcarchive
+*.dSYM.zip
+*.dSYM
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Native project folders
+/android
+/ios
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Expo
+.expo/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+fastlane/readme.md
+
+# Metro
+.metro-health-check*
+
+# Testing
+/coverage
+
+# Local development
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Misc
+*.log
+*.pem
+*.p8
+*.key
+*.mobileprovision
+*.orig.*
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Linux
+.directory
+.Trash-*
+
+# Android/IntelliJ
+build/
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
+
+# iOS
+**/ios/**/build/
+**/ios/**/*.mode1v3
+**/ios/**/*.mode2v3
+**/ios/**/*.moved-aside
+**/ios/**/*.pbxuser
+**/ios/**/*.perspectivev3
+**/ios/**/*.xcworkspace/
+**/ios/**/xcuserdata
+**/ios/**/*.xcbkptree
+**/ios/**/*.xccheckout
+**/ios/**/*.xcscmblueprint
+**/ios/**/*.xcodeproj/
+**/ios/**/project.xcworkspace/
+**/ios/**/xcshareddata/
+**/ios/**/*.xcodeproject/
+**/ios/**/xcuserdata/
+**/ios/**/Pods/
+**/ios/Podfile.lock
+**/ios/Podfile
+**/ios/Podfile.local
+**/ios/Podfile.lock
+**/ios/Podfile.local.lock
+**/ios/Podfile.lock.json
+**/ios/Podfile.lock.yaml
+**/ios/Podfile.lock.yml

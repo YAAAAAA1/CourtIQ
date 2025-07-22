@@ -88,6 +88,7 @@ export default function HomeScreen() {
   const [todayCompletedWorkouts, setTodayCompletedWorkouts] = useState(0);
   const [todayCompletedDrills, setTodayCompletedDrills] = useState(0);
   const [calorieGoalReached, setCalorieGoalReached] = useState(false);
+  const [totalWorkoutMinutes, setTotalWorkoutMinutes] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -128,6 +129,7 @@ export default function HomeScreen() {
         .from('workouts')
         .select('id, name, duration, created_at, workout_type')
         .eq('user_id', user.id)
+        .neq('workout_type', 'deleted')
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -174,6 +176,15 @@ export default function HomeScreen() {
       if (nutritionGoal) {
         setNutritionData(prev => ({ ...prev, goal: nutritionGoal.daily_calories }));
       }
+
+      // Load total workout duration from workout_sessions
+      const { data: workoutSessions } = await supabase
+        .from('workout_sessions')
+        .select('actual_duration')
+        .eq('user_id', user.id)
+        .eq('completed', true);
+      const totalWorkoutSeconds = workoutSessions ? workoutSessions.reduce((sum, s) => sum + (s.actual_duration || 0), 0) : 0;
+      setTotalWorkoutMinutes(Math.floor(totalWorkoutSeconds / 60));
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -438,17 +449,17 @@ export default function HomeScreen() {
 
       <View style={styles.activityOverview}>
         <View style={styles.activityCard}>
-          <Text style={styles.activityLabel}>Workouts:</Text>
+          <Text style={styles.activityLabel}>Workout Minutes:</Text>
           <CircularProgress
             size={80}
             strokeWidth={6}
-            progress={recentWorkouts.length / 7}
+            progress={totalWorkoutMinutes / 420} // 420 = 7 hours as a weekly goal
             color={colors.card.workout}
             backgroundColor={colors.gray[800]}
             showPercentage={false}
           >
-            <Text style={styles.activityValue}>{recentWorkouts.length}</Text>
-            <Text style={styles.activityUnit}>This Week</Text>
+            <Text style={styles.activityValue}>{totalWorkoutMinutes}</Text>
+            <Text style={styles.activityUnit}>Min This Week</Text>
           </CircularProgress>
         </View>
 

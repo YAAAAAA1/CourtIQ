@@ -1,21 +1,34 @@
 {
   "expo": {
-    "name": "HoopMaster Ai",
-    "slug": "hoopmaster-ai-rlnjsqh",
+    "name": "HoopMaster",
+    "slug": "hoopmaster",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "hoopmaster",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "jsEngine": "hermes",
+    "platforms": ["ios", "android", "web"],
+    "experiments": {
+      "tsconfigPaths": true,
+      "typedRoutes": true
+    },
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/your-project-id"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.rork.hoopmaster-ai-rlnjsqh",
+      "buildNumber": "1.0.0",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to scan your meals for nutrition tracking.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to let you select meal photos."
@@ -26,23 +39,25 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.hoopmaster-ai-rlnjsqh"
+      "package": "app.rork.hoopmaster_ai_rlnjsqh",
+      "versionCode": 1
     },
     "web": {
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
-      [
-        "expo-router",
-        {
-          "origin": "https://rork.com/"
-        }
-      ],
+      "expo-router",
       "expo-font",
-      "expo-web-browser"
+      "expo-notifications"
     ],
-    "experiments": {
-      "typedRoutes": true
+    "extra": {
+      "router": {
+        "origin": "https://rork.com/"
+      },
+      "eas": {
+        "projectId": "b8968fd4-d7b2-444c-99da-0492aacc1683"
+      }
     }
   }
 }

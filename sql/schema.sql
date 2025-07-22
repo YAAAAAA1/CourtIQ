@@ -80,6 +80,7 @@ CREATE TABLE workouts (
   description TEXT,
   duration INTEGER NOT NULL,
   workout_type TEXT NOT NULL,
+  completed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
@@ -101,6 +102,7 @@ CREATE TABLE workout_sessions (
   start_time TIMESTAMP WITH TIME ZONE NOT NULL,
   end_time TIMESTAMP WITH TIME ZONE,
   completed BOOLEAN DEFAULT FALSE NOT NULL,
+  actual_duration INTEGER,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 

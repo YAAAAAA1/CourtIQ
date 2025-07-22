@@ -43,7 +43,7 @@ export default function WelcomeScreen() {
         <View style={styles.brandingContainer}>
           <View style={styles.logoContainer}>
             <Text style={styles.logoIcon}>🏀</Text>
-            <Text style={styles.logoText}>HoopMaster AI</Text>
+            <Text style={styles.logoText}>CourtIQ</Text>
           </View>
           <Text style={styles.tagline}>Your Ultimate Basketball Training Partner</Text>
           <Text style={styles.subtitle}>Train smarter, play better, dominate the court</Text>

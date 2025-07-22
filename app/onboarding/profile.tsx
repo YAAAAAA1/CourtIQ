@@ -5,11 +5,11 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, User } from 'lucide-react-native';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
-import Input from '@/components/Input';
-import Button from '@/components/Button';
-import colors from '@/constants/colors';
+import { useAuth } from '@/hooks/useAuth.js';
+import { supabase } from '@/lib/supabase.js';
+import Input from '@/components/Input.js';
+import Button from '@/components/Button.js';
+import colors from '@/constants/colors.js';
 
 const basketballFocusAreas = [
   'Shooting',
@@ -69,8 +69,8 @@ export default function ProfileSetupScreen() {
       // Convert height to total inches for storage
       const totalHeightInches = parseInt(heightFeet) * 12 + (parseInt(heightInches) || 0);
       
-      // Create user profile in Supabase
-      const { error: profileError } = await supabase.from('users').insert({
+      // Create or update user profile in Supabase
+      const { error: profileError } = await supabase.from('users').upsert({
         id: user?.id,
         email: user?.email,
         name,
@@ -82,7 +82,7 @@ export default function ProfileSetupScreen() {
         main_focus: mainFocus,
         personal_goal: personalGoal,
         units: 'imperial', // Default to imperial units
-      });
+      }, { onConflict: 'id' });
 
       if (profileError) {
         throw profileError;

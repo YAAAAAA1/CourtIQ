@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { Calendar, ChevronDown } from 'lucide-react-native';
-import MuscleHeatmap from '@/components/MuscleHeatmap';
-import { drills as ALL_DRILLS } from '@/constants/drills';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
-import Card from '@/components/Card';
-import colors from '@/constants/colors';
+import MuscleHeatmap from '@/components/MuscleHeatmap.js';
+import { drills as ALL_DRILLS } from '@/constants/drills.js';
+import { useAuth } from '@/hooks/useAuth.js';
+import { supabase } from '@/lib/supabase.js';
+import Card from '@/components/Card.js';
+import colors from '@/constants/colors.js';
+import { useFocusEffect } from '@react-navigation/native';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -77,53 +78,11 @@ export default function AnalyticsScreen() {
   const [totalWorkoutMinutes, setTotalWorkoutMinutes] = useState(0);
   const [totalDrillMinutes, setTotalDrillMinutes] = useState(0);
 
-  useEffect(() => {
-    loadAnalyticsData();
-  }, [timeRange]);
-
-  useEffect(() => {
-    async function fetchMuscleScores() {
-      if (!user?.id) return;
-      // 1. Get all completed workout sessions
-      const { data: sessions } = await supabase
-        .from('workout_sessions')
-        .select('workout_id, actual_duration')
-        .eq('user_id', user.id)
-        .eq('completed', true);
-      // 2. Get all drills for these workouts
-      let workoutDrillIds: string[] = [];
-      if (sessions && sessions.length > 0) {
-        const workoutIds = sessions.map(s => s.workout_id);
-        const { data: workoutDrills } = await supabase
-          .from('workout_drills')
-          .select('drill_id')
-          .in('workout_id', workoutIds);
-        if (workoutDrills && workoutDrills.length > 0) {
-          workoutDrillIds = workoutDrills.map(wd => wd.drill_id);
-        }
-      }
-      // 3. Get all drill_sessions for this user
-      const { data: drillSessions } = await supabase
-        .from('drill_sessions')
-        .select('drill_id, duration')
-        .eq('user_id', user.id);
-      let drillSessionDrillIds: string[] = [];
-      let drillSessionMinutes = 0;
-      if (drillSessions && drillSessions.length > 0) {
-        drillSessionDrillIds = drillSessions.map(ds => ds.drill_id);
-        drillSessionMinutes = drillSessions.reduce((sum, ds) => sum + (ds.duration || 0), 0);
-      }
-      // 4. Aggregate muscle group usage from both sources
-      const allDrillIds = [...workoutDrillIds, ...drillSessionDrillIds];
-      const scores = aggregateMuscleScores(allDrillIds);
-      setMuscleScores(scores);
-      // 5. Sum actual_duration for total minutes (workouts + drills)
-      const totalWorkoutMinutes = sessions ? sessions.reduce((sum, s) => sum + (s.actual_duration || 0), 0) : 0;
-      setTotalWorkoutMinutes(totalWorkoutMinutes + drillSessionMinutes);
-      setTotalDrillMinutes(drillSessionMinutes);
-    }
-    fetchMuscleScores();
-  }, [user]);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadAnalyticsData();
+    }, [timeRange, user?.id])
+  );
 
   const loadAnalyticsData = async () => {
     if (!user?.id) return;
@@ -156,21 +115,132 @@ export default function AnalyticsScreen() {
         setNutritionData(null);
       }
 
-      // Load workout data
+      // Load workout session data for actual completed minutes
+      const { data: sessionsData } = await supabase
+        .from('workout_sessions')
+        .select('actual_duration, start_time, workout_id, end_time')
+        .eq('user_id', user.id)
+        .eq('completed', true)
+        .gte('start_time', startDate.toISOString())
+        .lte('start_time', endDate.toISOString());
+
+      // Group by day and sum minutes
+      const dayMap: { [key: string]: number } = {};
+      const completedWorkoutIds: string[] = [];
+      
+      if (sessionsData && sessionsData.length > 0) {
+        sessionsData.forEach((session: any) => {
+          const day = session.start_time.split('T')[0];
+          if (!dayMap[day]) dayMap[day] = 0;
+          
+          // Calculate duration - use actual_duration if available, otherwise calculate from start/end times
+          let duration = session.actual_duration || 0;
+          if (!duration && session.start_time && session.end_time) {
+            const startTime = new Date(session.start_time);
+            const endTime = new Date(session.end_time);
+            duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
+          }
+          
+          dayMap[day] += duration;
+          if (session.workout_id) {
+            completedWorkoutIds.push(session.workout_id);
+          }
+        });
+      }
+
+      // Build chart data for last 7/30/365 days
+      const labels = [];
+      const data = [];
+      let totalMinutes = 0;
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0];
+        labels.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+        const dayMinutes = Math.round((dayMap[dateStr] || 0) / 60);
+        data.push(dayMinutes);
+        totalMinutes += dayMinutes;
+      }
+      setWorkoutData({
+        labels: labels.slice(-7), // Show last 7 days
+        datasets: [{ data: data.slice(-7) }],
+      });
+      setTotalWorkoutMinutes(totalMinutes);
+
+      // Load drill data from completed workouts for muscle scores
+      if (completedWorkoutIds.length > 0) {
+        const { data: workoutDrillsData } = await supabase
+          .from('workout_drills')
+          .select('drill_id')
+          .in('workout_id', completedWorkoutIds);
+
+        if (workoutDrillsData && workoutDrillsData.length > 0) {
+          const drillIds = workoutDrillsData.map((wd: { drill_id: string }) => wd.drill_id);
+          const muscleScores = aggregateMuscleScores(drillIds);
+          setMuscleScores(muscleScores);
+        }
+      }
+
+      // Also load individual drill sessions (where workout_type is 'drill')
+      // First get workouts that are drill-type
+      const { data: drillWorkouts } = await supabase
+        .from('workouts')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('workout_type', 'drill');
+
+      if (drillWorkouts && drillWorkouts.length > 0) {
+        const drillWorkoutIds = drillWorkouts.map((w: { id: string }) => w.id);
+        
+        // Get workout sessions for these drill workouts
+        const { data: drillSessionsData } = await supabase
+          .from('workout_sessions')
+          .select('workout_id')
+          .eq('user_id', user.id)
+          .eq('completed', true)
+          .in('workout_id', drillWorkoutIds)
+          .gte('start_time', startDate.toISOString())
+          .lte('start_time', endDate.toISOString());
+
+        if (drillSessionsData && drillSessionsData.length > 0) {
+          const completedDrillWorkoutIds = drillSessionsData.map((session: { workout_id: string }) => session.workout_id);
+          
+          // Get the drill IDs from these individual drill workouts
+          const { data: individualDrillData } = await supabase
+            .from('workout_drills')
+            .select('drill_id')
+            .in('workout_id', completedDrillWorkoutIds);
+
+          if (individualDrillData && individualDrillData.length > 0) {
+            const individualDrillIds = individualDrillData.map((wd: { drill_id: string }) => wd.drill_id);
+            
+            // Combine with existing muscle scores
+            const existingScores = muscleScores || {};
+            const individualScores = aggregateMuscleScores(individualDrillIds);
+            
+            // Merge the scores
+            const combinedScores: Record<string, number> = { ...existingScores };
+            Object.entries(individualScores).forEach(([muscle, count]) => {
+              combinedScores[muscle] = (combinedScores[muscle] || 0) + count;
+            });
+            
+            setMuscleScores(combinedScores);
+          }
+        }
+      }
+
+      // Load workout data for type distribution
       const { data: workoutsData } = await supabase
         .from('workouts')
         .select('duration, workout_type, created_at')
         .eq('user_id', user.id)
+        .neq('workout_type', 'deleted')
         .gte('created_at', startDate.toISOString())
         .lte('created_at', endDate.toISOString());
 
       if (workoutsData && workoutsData.length > 0) {
         const dailyWorkouts = processWorkoutData(workoutsData, startDate, endDate);
         const typeDistribution = processWorkoutTypeData(workoutsData);
-        setWorkoutData(dailyWorkouts);
         setWorkoutTypeData(typeDistribution);
       } else {
-        setWorkoutData(null);
         setWorkoutTypeData([]);
       }
 
@@ -325,19 +395,30 @@ export default function AnalyticsScreen() {
 
       {workoutData ? (
         <Card title="Workout Duration" style={styles.chartCard}>
-          <BarChart
-            data={workoutData}
-            width={screenWidth - 64}
-            height={220}
-            yAxisLabel=""
-            yAxisSuffix="min"
-            chartConfig={{
-              ...chartConfig,
-              color: (opacity = 1) => `rgba(255, 107, 0, ${opacity})`,
-            }}
-            style={styles.chart}
-            showValuesOnTopOfBars
-          />
+          {(() => {
+            // Dynamically determine Y-axis max and segments
+            const allData = workoutData.datasets[0].data;
+            const maxValue = Math.max(120, ...allData);
+            const roundedMax = Math.ceil(maxValue / 10) * 10;
+            const segments = roundedMax / 10;
+            return (
+              <BarChart
+                data={workoutData}
+                width={screenWidth - 64}
+                height={220}
+                yAxisLabel=""
+                yAxisSuffix="min"
+                chartConfig={{
+                  ...chartConfig,
+                  color: (opacity = 1) => `rgba(255, 107, 0, ${opacity})`,
+                }}
+                style={styles.chart}
+                showValuesOnTopOfBars
+                fromZero
+                segments={segments}
+              />
+            );
+          })()}
           <View style={{ alignItems: 'center', marginBottom: 16 }}>
             <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>Total Training Minutes</Text>
             <Text style={{ color: colors.primary, fontSize: 32, fontWeight: 'bold', marginTop: 4 }}>{totalWorkoutMinutes}</Text>

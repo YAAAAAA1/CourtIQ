@@ -1,2 +1,2 @@
 # CourtIQ
-All in one basketball app 
+All in one basketball app

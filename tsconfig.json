@@ -1,24 +1,41 @@
 {
-    "extends": "expo/tsconfig.base",
-    "compilerOptions": {
-      "strict": true,
-      "jsx": "react-jsx",
-      "esModuleInterop": true,
-      "allowSyntheticDefaultImports": true,
-      "moduleResolution": "node",
-      "resolveJsonModule": true,
-      "skipLibCheck": true,
-      "paths": {
-        "@/*": [
-          "./*"
-        ]
-      }
-    },
-    "include": [
-      "**/*.ts",
-      "**/*.tsx",
-      ".expo/types/**/*.ts",
-      "expo-env.d.ts"
-    ]
-  }
-  
+  "extends": [
+    "expo/tsconfig.base",
+    "./tsconfig.paths.json"
+  ],
+  "compilerOptions": {
+    "strict": true,
+    "baseUrl": ".",
+    "types": [
+      "node",
+      "@types/react"
+    ],
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "jsx": "react-native",
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "noEmit": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "strictNullChecks": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "global.d.ts",
+    "types/**/*.d.ts",
+    "src/types/**/*.d.ts",
+    "nativewind-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

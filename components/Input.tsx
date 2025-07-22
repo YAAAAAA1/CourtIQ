@@ -1,32 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { 
   StyleSheet, 
-  TextInput, 
+  TextInput as RNTextInput, 
   View, 
   Text, 
   TouchableOpacity,
-  TextInputProps,
+  TextInputProps as RNTextInputProps,
   ViewStyle,
-  TextStyle
+  TextStyle,
+  StyleProp,
+  TextInputFocusEventData,
+  NativeSyntheticEvent,
 } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import colors from '@/constants/colors';
 import theme from '@/constants/theme';
 
-interface InputProps extends TextInputProps {
+export type InputVariant = 'default' | 'filled' | 'outlined';
+
+export interface InputProps extends Omit<RNTextInputProps, 'style'> {
   label?: string;
   error?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
-  containerStyle?: ViewStyle;
-  labelStyle?: TextStyle;
-  inputStyle?: TextStyle;
-  errorStyle?: TextStyle;
+  containerStyle?: StyleProp<ViewStyle>;
+  labelStyle?: StyleProp<TextStyle>;
+  inputStyle?: StyleProp<TextStyle>;
+  errorStyle?: StyleProp<TextStyle>;
   secureTextEntry?: boolean;
-  variant?: 'default' | 'filled' | 'outlined';
+  variant?: InputVariant;
 }
 
-const Input: React.FC<InputProps> = ({
+const Input = forwardRef<RNTextInput, InputProps>(({
   label,
   error,
   leftIcon,
@@ -37,8 +42,10 @@ const Input: React.FC<InputProps> = ({
   errorStyle,
   secureTextEntry,
   variant = 'default',
+  onFocus,
+  onBlur,
   ...rest
-}) => {
+}, ref) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -46,59 +53,92 @@ const Input: React.FC<InputProps> = ({
     setIsPasswordVisible(!isPasswordVisible);
   };
 
+  const handleFocus = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
+    setIsFocused(true);
+    if (onFocus) onFocus(e);
+  };
+
+  const handleBlur = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
+    setIsFocused(false);
+    if (onBlur) onBlur(e);
+  };
+
   const getInputContainerStyle = () => {
+    const baseStyle: ViewStyle[] = [styles.inputContainer];
+    
     switch (variant) {
       case 'filled':
-        return styles.filledInputContainer;
+        baseStyle.push(styles.filledInput);
+        break;
       case 'outlined':
-        return styles.outlinedInputContainer;
+        baseStyle.push(styles.outlinedInput);
+        break;
       default:
-        return styles.defaultInputContainer;
+        baseStyle.push(styles.defaultInput);
     }
+
+    if (isFocused) {
+      baseStyle.push(styles.focused);
+    }
+
+    if (error) {
+      baseStyle.push(styles.error);
+    }
+
+    return baseStyle;
   };
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={[styles.label, labelStyle]}>{label}</Text>}
-      <View style={[
-        styles.inputContainer,
-        getInputContainerStyle(),
-        isFocused && styles.inputFocused,
-        error && styles.inputError,
-      ]}>
-        {leftIcon && <View style={styles.leftIconContainer}>{leftIcon}</View>}
-        <TextInput
-          style={[
+      {label && (
+        <Text style={[styles.label, labelStyle]}>{label}</Text>
+      )}
+      <View style={getInputContainerStyle()}>
+        {leftIcon && (
+          <View style={styles.iconContainer}>
+            {leftIcon}
+          </View>
+        )}
+        <RNTextInput
+          ref={ref}
+          style={StyleSheet.flatten([
             styles.input,
+            inputStyle,
             leftIcon ? styles.inputWithLeftIcon : undefined,
             (rightIcon || secureTextEntry) ? styles.inputWithRightIcon : undefined,
-            inputStyle,
-          ]}
-          placeholderTextColor={colors.textTertiary}
+          ])}
           secureTextEntry={secureTextEntry && !isPasswordVisible}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          placeholderTextColor={colors.gray?.[500] || '#A1A1A6'}
           {...rest}
         />
-        {secureTextEntry && (
-          <TouchableOpacity 
-            style={styles.rightIconContainer} 
+        {secureTextEntry ? (
+          <TouchableOpacity
+            style={styles.iconContainer}
             onPress={togglePasswordVisibility}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            {isPasswordVisible ? 
-              <EyeOff size={20} color={colors.textSecondary} /> : 
-              <Eye size={20} color={colors.textSecondary} />
-            }
+            {isPasswordVisible ? (
+              <EyeOff size={20} color={colors.gray?.[500] || '#A1A1A6'} />
+            ) : (
+              <Eye size={20} color={colors.gray?.[500] || '#A1A1A6'} />
+            )}
           </TouchableOpacity>
-        )}
-        {rightIcon && !secureTextEntry && (
-          <View style={styles.rightIconContainer}>{rightIcon}</View>
-        )}
+        ) : rightIcon ? (
+          <View style={styles.iconContainer}>
+            {rightIcon}
+          </View>
+        ) : null}
       </View>
-      {error && <Text style={[styles.errorText, errorStyle]}>{error}</Text>}
+      {error && (
+        <Text style={[styles.errorText, errorStyle]}>{error}</Text>
+      )}
     </View>
   );
-};
+});
+
+Input.displayName = 'Input';
 
 const styles = StyleSheet.create({
   container: {
@@ -106,65 +146,57 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   label: {
-    fontSize: theme.typography.fontSizes.m,
-    fontWeight: theme.typography.fontWeights.semibold,
-    marginBottom: theme.spacing.s,
-    color: colors.text,
-    letterSpacing: 0.3,
+    fontSize: theme.typography?.fontSizes?.m || 14,
+    color: colors.text || '#FFFFFF',
+    marginBottom: theme.spacing?.xs || 4,
+    fontWeight: theme.typography?.fontWeights?.medium as any || '500',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: theme.borderRadius.m,
-    minHeight: 52,
-  },
-  defaultInputContainer: {
-    backgroundColor: colors.backgroundCard,
+    width: '100%',
+    borderRadius: theme.borderRadius?.m || 8,
+    backgroundColor: colors.backgroundCard || '#1C1C1E',
     borderWidth: 1,
-    borderColor: colors.gray[800],
+    borderColor: colors.gray?.[700] || '#3A3A3C',
   },
-  filledInputContainer: {
-    backgroundColor: colors.gray[900],
-    borderWidth: 0,
+  defaultInput: {
+    backgroundColor: colors.backgroundCard || '#1C1C1E',
   },
-  outlinedInputContainer: {
+  filledInput: {
+    backgroundColor: colors.gray?.[900] || '#2C2C2E',
+    borderColor: 'transparent',
+  },
+  outlinedInput: {
     backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: colors.gray[700],
+    borderColor: colors.gray?.[600] || '#48484A',
   },
   input: {
     flex: 1,
-    paddingVertical: theme.spacing.m,
-    paddingHorizontal: theme.spacing.m,
-    fontSize: theme.typography.fontSizes.m,
-    color: colors.text,
-    fontWeight: theme.typography.fontWeights.medium,
+    paddingVertical: theme.spacing?.m || 12,
+    paddingHorizontal: theme.spacing?.l || 16,
+    color: colors.text || '#FFFFFF',
+    fontSize: theme.typography?.fontSizes?.m || 14,
   },
   inputWithLeftIcon: {
-    paddingLeft: theme.spacing.s,
+    paddingLeft: theme.spacing?.s || 8,
   },
   inputWithRightIcon: {
-    paddingRight: theme.spacing.s,
+    paddingRight: theme.spacing?.s || 8,
   },
-  leftIconContainer: {
-    paddingLeft: theme.spacing.m,
+  iconContainer: {
+    padding: theme.spacing?.m || 12,
   },
-  rightIconContainer: {
-    paddingRight: theme.spacing.m,
+  focused: {
+    borderColor: colors.primary || '#FF6B35',
   },
-  inputFocused: {
-    borderColor: colors.primary,
-    ...theme.shadows.colored,
-  },
-  inputError: {
-    borderColor: colors.error,
+  error: {
+    borderColor: colors.error || '#FF453A',
   },
   errorText: {
-    color: colors.error,
-    fontSize: theme.typography.fontSizes.s,
-    fontWeight: theme.typography.fontWeights.medium,
-    marginTop: theme.spacing.xs,
-    letterSpacing: 0.2,
+    marginTop: theme.spacing?.xs || 4,
+    color: colors.error || '#FF453A',
+    fontSize: theme.typography?.fontSizes?.s || 12,
   },
 });
 

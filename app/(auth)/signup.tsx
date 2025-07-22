@@ -58,7 +58,7 @@ export default function SignUpScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
       <StatusBar style="light" />
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => router.back()}
@@ -68,7 +68,7 @@ export default function SignUpScreen() {
 
         <View style={styles.headerContainer}>
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join the HoopMaster community today</Text>
+          <Text style={styles.subtitle}>Join the CourtIQ community today</Text>
         </View>
 
         <View style={styles.formContainer}>
