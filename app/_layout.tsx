@@ -1,7 +1,7 @@
+import React, { useEffect, ReactNode } from 'react';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, ReactNode } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -99,10 +99,10 @@ const styles = StyleSheet.create({
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    'Inter-Regular': require('@/assets/fonts/Inter-Regular.ttf') as unknown as string,
-    'Inter-Medium': require('@/assets/fonts/Inter-Medium.ttf') as unknown as string,
-    'Inter-SemiBold': require('@/assets/fonts/Inter-SemiBold.ttf') as unknown as string,
-    'Inter-Bold': require('@/assets/fonts/Inter-Bold.ttf') as unknown as string,
+    'Inter-Regular': require('@/assets/fonts/Inter-Regular.otf') as unknown as string,
+    'Inter-Medium': require('@/assets/fonts/Inter-Medium.otf') as unknown as string,
+    'Inter-SemiBold': require('@/assets/fonts/Inter-SemiBold.otf') as unknown as string,
+    'Inter-Bold': require('@/assets/fonts/Inter-Bold.otf') as unknown as string,
   });
 
   useEffect(() => {

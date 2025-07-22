@@ -7,14 +7,7 @@ module.exports = {
   },
   assets: ['./assets/fonts/'],
   dependencies: {
-    // Fix for duplicate React installations
-    'react-native-reanimated': {
-      platforms: {
-        ios: {
-          podspecPath: path.join(__dirname, 'node_modules/react-native-reanimated/RNReanimated.podspec'),
-        },
-      },
-    },
+    // Removed react-native-reanimated dependency
   },
   // Support for TypeScript module resolution
   resolver: {

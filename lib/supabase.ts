@@ -3,11 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import 'react-native-url-polyfill/auto';
 
-// These should ideally come from environment variables
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://tgbutvnbqzjtexgfxvkl.supabase.co';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnYnV0dm5icXpqdGV4Z2Z4dmtsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyNjY1NzQsImV4cCI6MjA2Nzg0MjU3NH0.Uk6CLz14z3xDFkH52SYHnsvJSaHy88f1xn8sjhAnJjM';
+// Direct configuration values
+const supabaseConfig = {
+  url: 'https://tgbutvnbqzjtexgfxvkl.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnYnV0dm5icXpqdGV4Z2Z4dmtsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyNjY1NzQsImV4cCI6MjA2Nzg0MjU3NH0.Uk6CLz14z3xDFkH52SYHnsvJSaHy88f1xn8sjhAnJjM'
+};
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseConfig.url || !supabaseConfig.anonKey) {
   throw new Error('Missing Supabase URL or Anon Key');
 }
 
@@ -38,7 +40,7 @@ const supabaseStorage = {
 };
 
 // Create a single supabase client for interacting with your database
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseConfig.url, supabaseConfig.anonKey, {
   auth: {
     storage: supabaseStorage,
     autoRefreshToken: true,

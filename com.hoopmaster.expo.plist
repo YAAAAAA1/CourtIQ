@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.hoopmaster.expo</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>ulimit -n 65536 && cd /Users/jonahdovdavany/Downloads/TheOfficialHoopMaster && node start-server.js</string>
+    </array>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/tmp/hoopmaster-expo.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/hoopmaster-expo-error.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>WATCHMAN_DISABLED</key>
+        <string>1</string>
+        <key>EXPO_USE_WATCHMAN</key>
+        <string>0</string>
+        <key>METRO_NO_WATCH</key>
+        <string>1</string>
+        <key>METRO_DISABLE_FILE_WATCHING</key>
+        <string>1</string>
+        <key>NODE_OPTIONS</key>
+        <string>--max-old-space-size=4096</string>
+    </dict>
+</dict>
+</plist> 

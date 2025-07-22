@@ -4,18 +4,18 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, Search, ArrowLeft, Minus, Target, Calculator, X, Camera as CameraIcon, RotateCcw, Check } from 'lucide-react-native';
 import { CameraView, Camera } from 'expo-camera';
-import { useAuth } from '@/hooks/useAuth.js';
-import { supabase } from '@/lib/supabase.js';
-import Card from '@/components/Card.js';
-import Button from '@/components/Button.js';
-import CircularProgress from '@/components/CircularProgress.js';
-import colors from '@/constants/colors.js';
-import theme from '@/constants/theme.js';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
+import Card from '@/components/Card';
+import Button from '@/components/Button';
+import CircularProgress from '@/components/CircularProgress';
+import colors from '@/constants/colors';
+import theme from '@/constants/theme';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { updateAllReminders } from '@/lib/notifications.js';
+import { updateAllReminders } from '@/lib/notifications';
 
 const { width } = Dimensions.get('window');
 

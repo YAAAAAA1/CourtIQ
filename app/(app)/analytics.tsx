@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { Calendar, ChevronDown } from 'lucide-react-native';
-import MuscleHeatmap from '@/components/MuscleHeatmap.js';
-import { drills as ALL_DRILLS } from '@/constants/drills.js';
-import { useAuth } from '@/hooks/useAuth.js';
-import { supabase } from '@/lib/supabase.js';
-import Card from '@/components/Card.js';
-import colors from '@/constants/colors.js';
+import MuscleHeatmap from '@/components/MuscleHeatmap';
+import { drills as ALL_DRILLS } from '@/constants/drills';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
+import Card from '@/components/Card';
+import colors from '@/constants/colors';
 import { useFocusEffect } from '@react-navigation/native';
 
 const screenWidth = Dimensions.get('window').width;

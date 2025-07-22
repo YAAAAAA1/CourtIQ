@@ -1,26 +1,15 @@
 {
   "expo": {
     "name": "HoopMaster",
-    "slug": "hoopmaster",
+    "slug": "hoopmaster-ai-rlnjsqh",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "hoopmaster",
-    "userInterfaceStyle": "automatic",
-    "jsEngine": "hermes",
-    "platforms": ["ios", "android", "web"],
-    "experiments": {
-      "tsconfigPaths": true,
-      "typedRoutes": true
-    },
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
-    },
-    "updates": {
-      "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/your-project-id"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -28,10 +17,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.rork.hoopmaster-ai-rlnjsqh",
-      "buildNumber": "1.0.0",
+      "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to scan your meals for nutrition tracking.",
-        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to let you select meal photos."
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to let you select meal photos.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -47,8 +37,6 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router",
-      "expo-font",
       "expo-notifications"
     ],
     "extra": {
@@ -58,6 +46,8 @@
       "eas": {
         "projectId": "b8968fd4-d7b2-444c-99da-0492aacc1683"
       }
-    }
+    },
+    "newArchEnabled": false,
+    "owner": "jonahddd"
   }
 }

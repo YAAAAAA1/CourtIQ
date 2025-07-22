@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import * as Svg from 'react-native-svg';
-import colors from '@/constants/colors.js';
-import theme from '@/constants/theme.js';
+import colors from '@/constants/colors';
+import theme from '@/constants/theme';
 
 interface CircularProgressProps {
   size: number;

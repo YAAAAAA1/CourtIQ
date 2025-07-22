@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
-import useAuth from '../../src/hooks/useAuth';
+import useAuth from '../../hooks/useAuth';
 import { router } from 'expo-router';
 import { Home, Dumbbell, Calendar, Brain, BarChart2, Settings, Target } from 'lucide-react-native';
 import colors from '../../constants/colors';

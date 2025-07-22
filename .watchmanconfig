@@ -4,11 +4,16 @@
     "dist",
     ".expo",
     "ios/build",
-    "android/build"
+    "android/build",
+    ".git",
+    "coverage",
+    "tmp"
   ],
   "root_restrict_files": [".git"],
   "enforce_root_files": true,
   "watchman": {
-    "suppress_project_errors": true
-  }
+    "suppress_project_errors": true,
+    "enabled": false
+  },
+  "enabled": false
 }

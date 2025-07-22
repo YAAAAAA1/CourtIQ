@@ -3,15 +3,15 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, FlatList, Alert, 
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Search, Plus, Filter, ChevronRight, X, Clock, Play, Star, Calendar, ArrowLeft, Target, Trash2 } from 'lucide-react-native';
-import { useAuth } from '@/hooks/useAuth.js';
-import { supabase } from '@/lib/supabase.js';
-import Input from '@/components/Input.js';
-import Card from '@/components/Card.js';
-import Button from '@/components/Button.js';
-import colors from '@/constants/colors.js';
-import theme from '@/constants/theme.js';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
+import Input from '@/components/Input';
+import Card from '@/components/Card';
+import Button from '@/components/Button';
+import colors from '@/constants/colors';
+import theme from '@/constants/theme';
 import { useRouter } from 'expo-router';
-import { drills as allDrills } from '@/constants/drills.js';
+import { drills as allDrills } from '@/constants/drills';
 
 const { width } = Dimensions.get('window');
 

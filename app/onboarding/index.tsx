@@ -3,9 +3,9 @@ import { StyleSheet, View, Text, FlatList, Dimensions, TouchableOpacity } from '
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useAuth } from '@/hooks/useAuth.js';
-import Button from '@/components/Button.js';
-import colors from '@/constants/colors.js';
+import { useAuth } from '@/hooks/useAuth';
+import Button from '@/components/Button';
+import colors from '@/constants/colors';
 
 const { width } = Dimensions.get('window');
 

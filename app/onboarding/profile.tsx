@@ -5,11 +5,11 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, User } from 'lucide-react-native';
-import { useAuth } from '@/hooks/useAuth.js';
-import { supabase } from '@/lib/supabase.js';
-import Input from '@/components/Input.js';
-import Button from '@/components/Button.js';
-import colors from '@/constants/colors.js';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
+import Input from '@/components/Input';
+import Button from '@/components/Button';
+import colors from '@/constants/colors';
 
 const basketballFocusAreas = [
   'Shooting',

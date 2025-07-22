@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import colors from '@/constants/colors.js';
-import theme from '@/constants/theme.js';
+import colors from '@/constants/colors';
+import theme from '@/constants/theme';
 
 interface StatsCardProps {
   title: string;
